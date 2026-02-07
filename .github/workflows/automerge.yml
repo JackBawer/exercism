@@ -2,21 +2,55 @@ name: Auto-merge Exercism PRs
 
 on:
   pull_request:
-    types: [opened, synchronize]
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'PR number to merge (leave empty to process all open exercism PRs)'
+        required: false
+        type: string
 
 jobs:
   automerge:
     runs-on: ubuntu-latest
-    # Only run if the PR is from the exercism bot
-    if: github.actor == 'exercism-solutions-syncer[bot]'
+    # Only run if the PR is from the exercism bot (for pull_request events) or if manually triggered
+    if: github.event_name == 'workflow_dispatch' || github.actor == 'exercism-solutions-syncer[bot]'
     
     permissions:
       contents: write
       pull-requests: write
     
     steps:
-      - name: Auto-merge PR
-        run: gh pr merge ${{ github.event.pull_request.number }} --auto --merge
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Auto-merge PR(s)
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            if [ -n "${{ github.event.inputs.pr_number }}" ]; then
+              # Merge specific PR number provided
+              echo "Attempting to auto-merge PR #${{ github.event.inputs.pr_number }}"
+              gh pr merge ${{ github.event.inputs.pr_number }} --auto --merge
+            else
+              # Process all open PRs from exercism-solutions-syncer[bot]
+              echo "Processing all open PRs from exercism-solutions-syncer[bot]"
+              pr_numbers=$(gh pr list --author "exercism-solutions-syncer[bot]" --state open --json number --jq '.[].number')
+              if [ -z "$pr_numbers" ]; then
+                echo "No open PRs found from exercism-solutions-syncer[bot]"
+                exit 0
+              fi
+              while read -r pr_number; do
+                echo "Attempting to auto-merge PR #$pr_number"
+                if ! gh pr merge "$pr_number" --auto --merge; then
+                  echo "Warning: Failed to enable auto-merge for PR #$pr_number"
+                fi
+              done <<< "$pr_numbers"
+            fi
+          else
+            # Auto-merge the PR that triggered this workflow
+            echo "Attempting to auto-merge PR #${{ github.event.pull_request.number }}"
+            gh pr merge ${{ github.event.pull_request.number }} --auto --merge
+          fi
