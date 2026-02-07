@@ -30,17 +30,24 @@ jobs:
           GH_REPO: ${{ github.repository }}
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            if [ -n "${{ inputs.pr_number }}" ]; then
+            if [ -n "${{ github.event.inputs.pr_number }}" ]; then
               # Merge specific PR number provided
-              echo "Attempting to auto-merge PR #${{ inputs.pr_number }}"
-              gh pr merge ${{ inputs.pr_number }} --auto --merge
+              echo "Attempting to auto-merge PR #${{ github.event.inputs.pr_number }}"
+              gh pr merge ${{ github.event.inputs.pr_number }} --auto --merge
             else
               # Process all open PRs from exercism-solutions-syncer[bot]
               echo "Processing all open PRs from exercism-solutions-syncer[bot]"
-              gh pr list --author "exercism-solutions-syncer[bot]" --state open --json number --jq '.[].number' | while read pr_number; do
+              pr_numbers=$(gh pr list --author "exercism-solutions-syncer[bot]" --state open --json number --jq '.[].number')
+              if [ -z "$pr_numbers" ]; then
+                echo "No open PRs found from exercism-solutions-syncer[bot]"
+                exit 0
+              fi
+              while read -r pr_number; do
                 echo "Attempting to auto-merge PR #$pr_number"
-                gh pr merge "$pr_number" --auto --merge || echo "Failed to enable auto-merge for PR #$pr_number"
-              done
+                if ! gh pr merge "$pr_number" --auto --merge; then
+                  echo "Warning: Failed to enable auto-merge for PR #$pr_number"
+                fi
+              done <<< "$pr_numbers"
             fi
           else
             # Auto-merge the PR that triggered this workflow
