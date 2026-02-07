@@ -37,7 +37,7 @@ jobs:
             else
               # Process all open PRs from exercism-solutions-syncer[bot]
               echo "Processing all open PRs from exercism-solutions-syncer[bot]"
-              gh pr list --author "app/exercism-solutions-syncer" --state open --json number --jq '.[].number' | while read pr_number; do
+              gh pr list --author "exercism-solutions-syncer[bot]" --state open --json number --jq '.[].number' | while read pr_number; do
                 echo "Attempting to auto-merge PR #$pr_number"
                 gh pr merge "$pr_number" --auto --merge || echo "Failed to enable auto-merge for PR #$pr_number"
               done
