@@ -10,6 +10,7 @@ The workflow automatically runs when:
 - A PR is opened by `exercism-solutions-syncer[bot]`
 - A PR from `exercism-solutions-syncer[bot]` is synchronized (new commits pushed)
 - A PR from `exercism-solutions-syncer[bot]` is reopened
+- On a schedule (every 6 hours) to catch any PRs that might have been missed
 
 ### Manual triggering
 You can also manually trigger the workflow via the GitHub Actions tab:
@@ -32,10 +33,11 @@ Without these, the PR will be merged immediately when auto-merge is enabled.
 ## Troubleshooting
 
 ### PR was created before workflow existed
-If a PR was created before this workflow was added to the repository, it won't be automatically processed. You can:
-1. Manually run the workflow via workflow_dispatch
-2. Push a new commit to the PR to trigger the "synchronize" event
-3. Close and reopen the PR to trigger the "reopened" event
+If a PR was created before this workflow was added to the repository:
+1. The scheduled workflow will automatically process it within 6 hours
+2. Or, you can manually run the workflow via workflow_dispatch for immediate processing
+3. Or, push a new commit to the PR to trigger the "synchronize" event
+4. Or, close and reopen the PR to trigger the "reopened" event
 
 ### Auto-merge not working
 If auto-merge fails, check:
